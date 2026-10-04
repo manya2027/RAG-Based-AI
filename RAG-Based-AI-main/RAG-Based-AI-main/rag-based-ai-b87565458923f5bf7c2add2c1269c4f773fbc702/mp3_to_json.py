@@ -1,12 +1,11 @@
 import json
-import os
-from pathlib import Path
 
 import whisper
 
-BASE_DIR = Path(__file__).resolve().parent
-AUDIOS_DIR = BASE_DIR / "audios"
-JSONS_DIR = BASE_DIR / "jsons"
+import config
+
+AUDIOS_DIR = config.AUDIOS_DIR
+JSONS_DIR = config.JSONS_DIR
 
 
 def main():
@@ -22,8 +21,14 @@ def main():
         print(f"No audio files found in {AUDIOS_DIR}.")
         return
 
+    # Transcription is the slowest step, so never redo a file that already has a json.
+    audio_files = [a for a in audio_files if not (JSONS_DIR / f"{a}.json").exists()]
+    if not audio_files:
+        print("All audio files are already transcribed.")
+        return
+
     JSONS_DIR.mkdir(exist_ok=True)
-    model = whisper.load_model("large-v2")
+    model = whisper.load_model(config.WHISPER_MODEL)
 
     for audio_name in audio_files:
         if "_" in audio_name:
@@ -51,8 +56,11 @@ def main():
 
             chunks_with_metadata = {"chunks": chunks, "text": result["text"]}
 
-            with open(JSONS_DIR / f"{audio_name}.json", "w", encoding="utf-8") as f:
+            out = JSONS_DIR / f"{audio_name}.json"
+            tmp = out.with_suffix(".tmp")
+            with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(chunks_with_metadata, f, ensure_ascii=False, indent=2)
+            tmp.replace(out)
 
 
 if __name__ == "__main__":

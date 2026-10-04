@@ -1,0 +1,24 @@
+services:
+  ollama:
+    image: ollama/ollama
+    volumes:
+      - ollama:/root/.ollama
+    # Uncomment to use an NVIDIA GPU:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]
+
+  api:
+    build: .
+    depends_on: [ollama]
+    ports: ["8000:8000"]
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      WEB_WORKERS: "4"
+    volumes:
+      - ./index:/app/index
+      - ./jsons:/app/jsons
+
+volumes:
+  ollama:
